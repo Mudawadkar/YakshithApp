@@ -1,0 +1,165 @@
+az vm create  --resource-group "Simplilearn HOL 100714" --name "bipVM" --image "Win2016Datacenter"  --admin-username "Vmadmin" --admin-password "Password@123" --location westus2 --storage-sku "Standard_LRS"
+
+
+
+Step 1: Create Two ResourceGroups
+az group create --name AbhayRGEastUS --location eastus
+
+az group create --name AbhayRGWestUS --location westus
+
+
+Step 2: Create Two Virtual Networks
+
+Create VNet1:
+
+Name: VNet-East
+
+Region: (e.g., East US)
+
+Address Space: 10.0.0.0/16
+
+Subnet: 10.0.1.0/24
+
+Create VNet2:
+
+Name: VNet-West
+
+Region: (e.g., West US)
+
+Address Space: 10.1.0.0/16
+
+Subnet: 10.1.1.0/24
+
+az network vnet create \
+  --resource-group AbhayRGEastUS \
+  --name VNet-East \
+  --address-prefix 10.0.0.0/16 \
+  --subnet-name Subnet-East \
+  --subnet-prefix 10.0.1.0/24 \
+  --location eastus
+
+az network vnet create \
+  --resource-group AbhayRGWestUS \
+  --name VNet-West \
+  --address-prefix 10.1.0.0/16 \
+  --subnet-name Subnet-West \
+  --subnet-prefix 10.1.1.0/24 \
+  --location westus
+
+
+Step 3: Deploy Virtual Machines in Each VNet
+
+For each VM:
+VM1 in VNet-East
+Name: VM-East
+Image: "Windows Server 2019 Datacenter - x64 Gen2"
+Size: "Standard_D2s_v3 - 2 vcpus, 8 GiB memory (Price unavailable)"
+"OS disk type": "Standard HDD (locally-redundant storage)"
+Network: VNet-East → Subnet 10.0.1.0/24
+
+VM2 in VNet-West
+Name: VM-West
+Image: "Windows Server 2019 Datacenter - x64 Gen2"
+Size: "Standard_D2s_v3 - 2 vcpus, 8 GiB memory (Price unavailable)"
+"OS disk type": "Standard HDD (locally-redundant storage)"
+Network: VNet-West → Subnet 10.1.1.0/24
+
+##ENV
+# Administrator credentials
+ADMIN_USER="vmadmin"
+ADMIN_PASSWORD="Password@123"
+
+# Image URN for Windows Server 2019 Datacenter Gen2
+IMAGE_URN="MicrosoftWindowsServer:WindowsServer:2019-datacenter-gensecond:latest"
+
+# VM size
+VM_SIZE="Standard_D2s_v3"
+
+# OS disk settings
+OS_DISK_SIZE_GB=127
+OS_DISK_STORAGE_TYPE="Standard_LRS"   # Standard HDD managed disk (locally-redundant)
+
+
+##VM Creation
+az vm create \
+  --resource-group AbhayRGEastUS \
+  --name VM-East \
+  --location eastus \
+  --size $VM_SIZE \
+  --image $IMAGE_URN \
+  --admin-username $ADMIN_USER \
+  --admin-password $ADMIN_PASSWORD \
+  --vnet-name VNet-East \
+  --subnet Subnet-East \
+  --os-disk-name VM-East-OSDisk \
+  --os-disk-size-gb $OS_DISK_SIZE_GB \
+  --os-disk-storage-account-type $OS_DISK_STORAGE_TYPE \
+  --no-wait
+
+az vm create \
+  --resource-group AbhayRGWestUS \
+  --name VM-West \
+  --location westus \
+  --size $VM_SIZE \
+  --image $IMAGE_URN \
+  --admin-username $ADMIN_USER \
+  --admin-password $ADMIN_PASSWORD \
+  --vnet-name VNet-West \
+  --subnet Subnet-West \
+  --os-disk-name VM-West-OSDisk \
+  --os-disk-size-gb $OS_DISK_SIZE_GB \
+  --os-disk-storage-account-type $OS_DISK_STORAGE_TYPE \
+  --no-wait
+
+
+
+Step 4: Establish VNet Peering
+
+Name: EastToWest
+
+Peering with remote VNet: VNet-West
+
+Enable Allow virtual network access
+
+Similarly, open VNet-West → Peerings → Add:
+
+Name: WestToEast
+
+Peering with remote VNet: VNet-East
+
+Enable Allow virtual network access
+
+
+##ENV
+# Resource groups & VNets
+RG_EAST="AbhayRGEastUS"
+RG_WEST="AbhayRGWestUS"
+VNET_EAST="VNet-East"
+VNET_WEST="VNet-West"
+
+# Subscription id (auto-detect)
+SUB_ID=$(az account show --query id -o tsv)
+
+# Remote VNet resource IDs
+REMOTE_VNET_WEST="/subscriptions/${SUB_ID}/resourceGroups/${RG_WEST}/providers/Microsoft.Network/virtualNetworks/${VNET_WEST}"
+REMOTE_VNET_EAST="/subscriptions/${SUB_ID}/resourceGroups/${RG_EAST}/providers/Microsoft.Network/virtualNetworks/${VNET_EAST}"
+
+
+#peering east-west
+az network vnet peering create \
+  --name EastToWest \
+  --resource-group $RG_EAST \
+  --vnet-name $VNET_EAST \
+  --remote-vnet $REMOTE_VNET_WEST \
+  --allow-vnet-access true
+
+
+#peering west-east
+az network vnet peering create \
+  --name WestToEast \
+  --resource-group $RG_WEST \
+  --vnet-name $VNET_WEST \
+  --remote-vnet $REMOTE_VNET_EAST \
+  --allow-vnet-access true
+
+
