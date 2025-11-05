@@ -1,0 +1,18 @@
+﻿{
+  "Name": "Compute Operator (Custom)",
+  "IsCustom": true,
+  "Description": "Can start/restart VMs and read network/storage info",
+  "Actions": [
+    "Microsoft.Compute/virtualMachines/start/action",
+    "Microsoft.Compute/virtualMachines/restart/action",
+    "Microsoft.Compute/virtualMachines/read",
+    "Microsoft.Network/*/read",
+    "Microsoft.Storage/*/read"
+  ],
+  "NotActions": [],
+  "DataActions": [],
+  "NotDataActions": [],
+  "AssignableScopes": [
+    "/subscriptions/1c4f9611-e8a5-4fac-be84-8e9faa2903b3"
+  ]
+}
